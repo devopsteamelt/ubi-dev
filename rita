@@ -1,0 +1,154 @@
+FROM docker.io/redhat/ubi9:9.3
+
+ARG OS_VERSION="Red Hat Enterprise Linux 9.7 (Plow)"
+ARG GCC_VERSION="13.3.1"
+ARG CMAKE_VERSION="3.26.5"
+ARG NINJA_VERSION="1.10.2"
+ARG PYTHON_VERSION="3.9.25"
+ARG GIT_VERSION="2.47.3"
+ARG RSYNC_VERSION="3.2.5"
+
+LABEL name="ubi9:9.3" \
+      OSVersion="$OS_VERSION" \
+      GCCVersion="$GCC_VERSION" \
+      CMakeVersion="$CMAKE_VERSION" \
+      NinjaVersion="$NINJA_VERSION" \
+      GitVersion="$GIT_VERSION" \
+      RsyncVersion="$RSYNC_VERSION" \
+      PythonVersion="$PYTHON_VERSION"
+
+# not exist: wireshark-cli, google-noto-sans-fonts , libstdc++-docs, ipcgull-devel, xterm, meld, nfs-utils, tree, ansible, cifs-utils, samba-client, perf, binutils-devel, elfutils-devel, elfutils-libelf-devel, texinfo, bat, zlib-devel, ngrep, hiera, lsyncd,ccache, lapack-devel, dwarves, lcov, mpc-devel, epel-release, ipcgull-devel
+# not exist groups: "c-development" "development-tools"
+# already installed: ca-certificates util-linux iproute openssl tar
+# should be add tcsh csh
+
+# checked: 
+RUN curl -k https://files.devops.elta.co.il/scripts/addEltaCert.sh | sh && \
+    dnf -y clean all && \
+    dnf -y update && \
+    dnf -y update --refresh && \
+    dnf -y --allowerasing install \
+        gcc-toolset-13 \
+        openssh-server \
+        openssh-clients \
+        fontconfig \
+        procps-ng \
+        gdb \
+        gdb-gdbserver \
+        file \
+        hostname \
+        net-tools \
+        nmap \
+        strace \
+        zip \
+        nano \
+        pciutils \
+        wget \
+        less \
+        git \
+        cmake \
+        ninja-build \
+        valgrind \
+        libcurl \
+        pip \
+        bash \
+        glibc-devel \
+        libstdc++-devel \
+        perl \
+        which \
+        gzip \
+        sudo \
+        tar \
+        elfutils \
+        python3-devel \
+        man \
+        jq \
+        openssl-devel \
+        bind-utils \
+        gdb-gdbserver \
+        zlib-devel \
+        rsync \
+        sshpass \
+        shadow-utils \
+        libtool \
+        patch \
+        gmp-devel \
+        mpfr-devel \
+        clang \
+        clang-analyzer \
+        clang-libs \
+        clang-resource-filesystem \
+        clang-tools-extra \
+        python3-clang \
+        libmpc-devel \
+        zlib-devel \
+        ncurses-devel \
+        libcap-devel \
+        libpcap-devel \
+        libpcap \
+        dos2unix \
+        libssh && \
+    dnf clean all && \
+    rm -rf /var/cache/dnf && \
+    mkdir -p /var/run/sshd
+
+# Install gcc-toolset-13 and set it as the default gcc/g++ without scl/ENV
+RUN set -eux && \
+    echo "/opt/rh/gcc-toolset-13/root/usr/lib64" > /etc/ld.so.conf.d/gcc-toolset-13.conf && \
+    ldconfig && \
+    ln -sf /opt/rh/gcc-toolset-13/root/usr/bin/gcc /usr/bin/gcc && \
+    ln -sf /opt/rh/gcc-toolset-13/root/usr/bin/g++ /usr/bin/g++ && \
+    gcc --version | head -n 1 && \
+    g++ --version | head -n 1
+
+
+    
+  
+# Switch to GCC 11
+# alternatives --set gcc /usr/bin/gcc-11
+# alternatives --set g++ /usr/bin/g++-11
+
+# Switch back to GCC 8.5
+# alternatives --set gcc /usr/local/gcc/gcc8.5/bin/gcc-8.5
+# alternatives --set g++ /usr/local/gcc/gcc8.5/bin/g++-8.5
+
+
+
+# Give to root empty password
+RUN echo "root:1" | chpasswd
+
+# Install tcsh
+RUN set -eux; \
+    echo "Installing tcsh from astron.com (no SSL)..."; \
+    cd /tmp; \
+    echo "Downloading tcsh 6.24.16..."; \
+    wget -O tcsh-6.24.16.tar.gz http://astron.com/pub/tcsh/tcsh-6.24.16.tar.gz; \
+    echo "Extracting tcsh..."; \
+    tar xzf tcsh-6.24.16.tar.gz; \
+    cd tcsh-6.24.16; \
+    echo "Configuring tcsh..."; \
+    ./configure --prefix=/usr; \
+    echo "Building tcsh..."; \
+    make -j"$(nproc)"; \
+    echo "Installing tcsh..."; \
+    make install; \
+    echo "Linking csh -> tcsh..."; \
+    ln -sf /usr/bin/tcsh /bin/csh; \
+    echo "Cleaning..."; \
+    cd /tmp; \
+    rm -rf tcsh-6.24.16 tcsh-6.24.16.tar.gz; \
+    echo "tcsh installed successfully."
+   
+### install sonarqube
+RUN set -eux && \
+    dnf -y update && \
+    dnf -y update --refresh && \
+    cd /usr/bin/ && \
+	wget https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-4.6.2.2472-linux.zip && \
+	unzip sonar-scanner-cli-4.6.2.2472-linux.zip && \
+	rm -f sonar-scanner-cli-4.6.2.2472-linux.zip && \
+	/usr/bin/sonar-scanner-4.6.2.2472-linux/bin/sonar-scanner -v && \
+    dnf clean all && \
+    rm -rf /var/cache/dnf
+
+CMD ["/bin/bash"]

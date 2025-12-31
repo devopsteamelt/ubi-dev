@@ -1,108 +1,209 @@
 FROM docker.io/redhat/ubi9:9.3
+# old
+# ARG GTEST_VERSION=1.15.2
+# ARG BOOST_VERSION_DOT=1.86.0
+# ARG BOOST_VERSION_UNDERSCORE=1_86_0
+# ARG BENCHMARK_VERSION=1.9.0
+# new
+ARG BOOST_VERSION_DOT=1.90.0
+ARG BOOST_VERSION_UNDERSCORE=1_90_0
+ARG GTEST_VERSION=1.17.0
+ARG BENCHMARK_VERSION=1.9.4
+# default
+# ARG CMAKE_VERSION="3.26.5"
+# ARG NINJA_VERSION="1.10.2"
 
+LABEL name="ubi9:9.3" \
+	  GoogleTestVersion="$GTEST_VERSION" \
+	  BoostVersion="$BOOST_VERSION_DOT" \
+	  BenchmarkVersion="$BENCHMARK_VERSION"
 
-
-ARG GTEST_VERSION=1.15.2
-ARG BOOST_VERSION_DOT=1.86.0
-ARG BOOST_VERSION_UNDERSCORE=1_86_0
-ARG BENCHMARK_VERSION=1.9.0
-
-
-
-# not exist: wireshark-cli, google-noto-sans-fonts, tcsh, csh 
+# not exist: wireshark-cli, google-noto-sans-fonts, tcsh, csh , tcpdump, libstdc++-docs, ipcgull-devel, xterm, meld, nfs-utils, tree, ansible, cifs-utils, samba-client, perf, binutils-devel, elfutils-devel, elfutils-libelf-devel, texinfo, bat, zlib-devel, ngrep, hiera, lsyncd,ccache, lapack-devel, dwarves, lcov, mpc-devel, epel-release, ipcgull-devel
 # not exist groups: "c-development" "development-tools"
 # already installed: ca-certificates util-linux iproute openssl tar
-# to check: gdb-server tcpdump  glibc libstdc++ libstdc++-docs libgcc glibc-langpack-en gcc gcc-c++ gdb sudo openssl openssl-devel net-tools bind-utils gdb-gdbserver ipcgull-devel
-# xterm meld  nfs-utils tree ansible hostname cifs-utils samba-client perf binutils-devel elfutils-devel elfutils-libelf-devel texinfo zlib-devel rsync bat ngrep hiera lsyncd sshpass lcov jq ccache lapack-devel dwarves
-
-
-# should be add tcsh csh
-
-
-google-noto-sans-fonts && \
-dnf clean all && \
-mkdir -p /var/run/sshd
-
 
 # checked: 
-RUN dnf -y --setopt=sslverify=false clean all; dnf -y update ; dnf -y update --refresh  && \ 
-    dnf -y --setopt=sslverify=false --allowerasing install \
-    openssh-server
-    openssh-clients
-    fontconfig
-    procps-ng
-    gdb
-    file
-    hostname
-    net-tools
-    nmap
-    strace
-    zip
-    nano
-    pciutils
-    wget
-    less
-    git
-    cmake
-    ninja-build
-    valgrind
-    libcurl
-    pip
-    bash
-    glibc-devel
-    libstdc++-devel
-    perl
-    which
-    gzip 
-    sudo
-    tar
-    elfutils
-    gcc
-    gcc-c++
-    python3-devel
-    # zeev packages
-    man --setopt='tsflags='
-    jq
-
-    && \
+RUN curl -k https://files.devops.elta.co.il/scripts/addEltaCert.sh | sh && \
+    dnf -y clean all && \
+    dnf -y update && \
+    dnf -y update --refresh && \
+    dnf -y --allowerasing install \
+        openssh-server \
+        openssh-clients \
+        fontconfig \
+        procps-ng \
+        gdb \
+        gdb-gdbserver \
+        file \
+        hostname \
+        net-tools \
+        nmap \
+        strace \
+        zip \
+        nano \
+        pciutils \
+        wget \
+        less \
+        git \
+        cmake \
+        ninja-build \
+        valgrind \
+        libcurl \
+        pip \
+        bash \
+        glibc-devel \
+        libstdc++-devel \
+        perl \
+        which \
+        gzip \
+        sudo \
+        tar \
+        elfutils \
+        gcc \
+        gcc-c++ \
+        python3-devel \
+        man \
+        jq \
+        openssl-devel \
+        bind-utils \
+        gdb-gdbserver \
+        zlib-devel \
+        rsync \
+        sshpass \
+        shadow-utils \
+        libtool \
+        patch \
+        gmp-devel \
+        mpfr-devel \
+        clang \
+        clang-analyzer \
+        clang-libs \
+        clang-resource-filesystem \
+        clang-tools-extra \
+        python3-clang\
+        libmpc-devel \
+        zlib-devel \
+        ncurses-devel \
+        libcap-devel \
+        libpcap-devel \
+        libpcap \
+        dos2unix \
+        libssh && \
     dnf clean all && \
     mkdir -p /var/run/sshd
+
+# install tcpdump
+RUN cd /tmp && \
+    wget https://www.tcpdump.org/release/tcpdump-4.9.3.tar.gz && \
+    tar -xvf tcpdump-4.9.3.tar.gz && \
+    cd tcpdump-4.9.3 && \
+    ./configure --prefix=/usr && \
+    make -j"$(nproc)" && \
+    make install
+
+# podman run --rm -it --cap-add=NET_RAW --cap-add=NET_ADMIN  -> to premit the tcpdump
+
+
+# ---- RUN 1: build GCC 8.5 + install gcc-toolset-13 + ldconfig + cleanup ----
+RUN set -eux && \
+    cd /tmp && \
+    wget https://ftp.gnu.org/gnu/gcc/gcc-8.5.0/gcc-8.5.0.tar.gz && \
+    tar xzf gcc-8.5.0.tar.gz && \
+    mkdir -p build_gcc_8.5.0 && \
+    cd build_gcc_8.5.0 && \
+    ../gcc-8.5.0/configure \
+        --enable-languages=c,c++,objc,obj-c++ \
+        --prefix=/usr/local/gcc/gcc8.5 \
+        --program-suffix=-8.5 \
+        --enable-shared \
+        --disable-libquadmath \
+        --disable-libquadmath-support \
+        --disable-multilib \
+        --disable-libsanitizer && \
+    make -j"$(nproc)" && \
+    make install && \
+    \
+    dnf -y install gcc-toolset-13 && \
+    dnf clean all && \
+    \
+    echo "/opt/rh/gcc-toolset-13/root/usr/lib64" > /etc/ld.so.conf.d/gcc-toolset-13.conf && \
+    ldconfig && \
+    \
+    cd /tmp && \
+    rm -rf build_gcc_8.5.0 gcc-8.5.0 gcc-8.5.0.tar.gz
+
+# ---- RUN 2: ONLY alternatives + checks (default = GCC 8.5) ----
+RUN set -eux && \
+    GCC8=/usr/local/gcc/gcc8.5/bin/gcc-8.5 && \
+    GPP8=/usr/local/gcc/gcc8.5/bin/g++-8.5 && \
+    test -x "$GCC8" && test -x "$GPP8" && \
+    \
+    # expose gcc-13/g++-13 commands
+    ln -sf /opt/rh/gcc-toolset-13/root/usr/bin/gcc /usr/bin/gcc-13 && \
+    ln -sf /opt/rh/gcc-toolset-13/root/usr/bin/g++ /usr/bin/g++-13 && \
+    test -x /usr/bin/gcc-13 && test -x /usr/bin/g++-13 && \
+    \
+    # preserve system gcc as gcc-11 (if not already moved)
+    [ -e /usr/bin/gcc ] && [ ! -L /usr/bin/gcc ] && mv /usr/bin/gcc /usr/bin/gcc-11 || true && \
+    [ -e /usr/bin/g++ ] && [ ! -L /usr/bin/g++ ] && mv /usr/bin/g++ /usr/bin/g++-11 || true && \
+    \
+    # register all versions in alternatives
+    alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-11 110 && \
+    alternatives --install /usr/bin/g++ g++ /usr/bin/g++-11 110 && \
+    alternatives --install /usr/bin/gcc gcc "$GCC8" 85 && \
+    alternatives --install /usr/bin/g++ g++ "$GPP8" 85 && \
+    alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-13 130 && \
+    alternatives --install /usr/bin/g++ g++ /usr/bin/g++-13 130 && \
+    \
+    # set DEFAULT to GCC 8.5
+    alternatives --set gcc "$GCC8" && \
+    alternatives --set g++ "$GPP8" && \
+    \
+    # checks
+    echo "Default gcc:" && gcc --version | head -n 1 && \
+    echo "gcc-13:" && /usr/bin/gcc-13 --version | head -n 1 && \
+    echo "gcc-11:" && /usr/bin/gcc-11 --version | head -n 1 && \
+    echo "gcc points to:" && readlink -f /usr/bin/gcc && \
+    echo "alternatives gcc:" && alternatives --display gcc
+
+# Switch DEFAULT gcc/g++ to GCC 8.5:
+#   alternatives --set gcc /usr/local/gcc/gcc8.5/bin/gcc-8.5
+#   alternatives --set g++ /usr/local/gcc/gcc8.5/bin/g++-8.5
+#
+# Switch DEFAULT gcc/g++ to GCC 11:
+#   alternatives --set gcc /usr/bin/gcc-11
+#   alternatives --set g++ /usr/bin/g++-11
+#
+# Switch DEFAULT gcc/g++ to GCC 13:
+#   alternatives --set gcc /usr/bin/gcc-13
+#   alternatives --set g++ /usr/bin/g++-13
 
 
 # Give to root empty password
 RUN echo "root:1" | chpasswd
 
-# rita requirements 
-# pywin package doesnt exist
-# pip3 install requests==2.30.0
-# pip3 install ftputil==5.0.4
-# pip3 install configparser==5.0.2
-# pip3 install colorama==0.4.6
-# pip3 install docxtpl==0.15.2
-# pip3 install jira==3.5.0
-# pip3 install pandas==2.0.1
-# pip3 install junit2html==30.1.3
-# pip3 install junit-xml==1.9
-
-# Install pip packages
-RUN pip3 install --no-cache-dir 
-
-
-RUN dnf update -y && \
-    dnf clean all -y && \
-    echo && \
-    echo Set gcc alternatives && \
-    alternatives --install /usr/local/bin/gcc gcc  /usr/bin/gcc 1 \
-    --slave /usr/local/bin/g++ g++ /usr/bin/g++ \
-    --slave /usr/local/bin/gcc-ar gcc-ar /usr/bin/gcc-ar \
-    --slave /usr/local/bin/gcc-nm gcc-nm /usr/bin/gcc-nm \
-    --slave /usr/local/bin/gcc-ranlib gcc-runlib /usr/bin/gcc-ranlib  && \
-    alternatives --install /usr/local/bin/gcc gcc /usr/local/gcc/gcc8.5/bin/gcc-8.5 20 \
-    --slave /usr/local/bin/g++ g++ /usr/local/gcc/gcc8.5/bin/g++-8.5 \
-    --slave /usr/local/bin/gcc-ar gcc-ar /usr/local/gcc/gcc8.5/bin/gcc-ar-8.5 \
-    --slave /usr/local/bin/gcc-nm gcc-nm /usr/local/gcc/gcc8.5/bin/gcc-nm-8.5 \
-    --slave /usr/local/bin/gcc-ranlib gcc-runlib /usr/local/gcc/gcc8.5/bin/gcc-ranlib-8.5  && \
-    alternatives --set gcc /usr/bin/gcc
+# Install tcsh
+RUN set -eux; \
+    echo "Installing tcsh from astron.com (no SSL)..."; \
+    cd /tmp; \
+    echo "Downloading tcsh 6.24.16..."; \
+    wget -O tcsh-6.24.16.tar.gz http://astron.com/pub/tcsh/tcsh-6.24.16.tar.gz; \
+    echo "Extracting tcsh..."; \
+    tar xzf tcsh-6.24.16.tar.gz; \
+    cd tcsh-6.24.16; \
+    echo "Configuring tcsh..."; \
+    ./configure --prefix=/usr; \
+    echo "Building tcsh..."; \
+    make -j"$(nproc)"; \
+    echo "Installing tcsh..."; \
+    make install; \
+    echo "Linking csh -> tcsh..."; \
+    ln -sf /usr/bin/tcsh /bin/csh; \
+    echo "Cleaning..."; \
+    cd /tmp; \
+    rm -rf tcsh-6.24.16 tcsh-6.24.16.tar.gz; \
+    echo "tcsh installed successfully."
+    
 
 # Install Boost
 RUN pushd /tmp/ && \
@@ -163,6 +264,4 @@ RUN cd /usr/bin/ && \
 	/usr/bin/sonar-scanner-4.6.2.2472-linux/bin/sonar-scanner -v 
 
 
-
-
-
+CMD ["/bin/bash"]
