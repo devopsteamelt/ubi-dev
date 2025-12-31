@@ -9,6 +9,8 @@ ARG BOOST_VERSION_DOT=1.90.0
 ARG BOOST_VERSION_UNDERSCORE=1_90_0
 ARG GTEST_VERSION=1.17.0
 ARG BENCHMARK_VERSION=1.9.4
+ARG TCSH_VERSION=6.24.16
+ARG GCC_VERSION=8.5.0
 # default
 # ARG CMAKE_VERSION="3.26.5"
 # ARG NINJA_VERSION="1.10.2"
@@ -107,11 +109,11 @@ RUN cd /tmp && \
 # ---- RUN 1: build GCC 8.5 + install gcc-toolset-13 + ldconfig + cleanup ----
 RUN set -eux && \
     cd /tmp && \
-    wget https://ftp.gnu.org/gnu/gcc/gcc-8.5.0/gcc-8.5.0.tar.gz && \
-    tar xzf gcc-8.5.0.tar.gz && \
-    mkdir -p build_gcc_8.5.0 && \
-    cd build_gcc_8.5.0 && \
-    ../gcc-8.5.0/configure \
+    wget https://ftp.gnu.org/gnu/gcc/gcc-${GCC_VERSION}/gcc-${GCC_VERSION}.tar.gz && \
+    tar xzf gcc-${GCC_VERSION}.tar.gz && \
+    mkdir -p build_gcc_${GCC_VERSION} && \
+    cd build_gcc_${GCC_VERSION} && \
+    ../gcc-${GCC_VERSION}/configure \
         --enable-languages=c,c++,objc,obj-c++ \
         --prefix=/usr/local/gcc/gcc8.5 \
         --program-suffix=-8.5 \
@@ -130,7 +132,7 @@ RUN set -eux && \
     ldconfig && \
     \
     cd /tmp && \
-    rm -rf build_gcc_8.5.0 gcc-8.5.0 gcc-8.5.0.tar.gz
+    rm -rf build_gcc_${GCC_VERSION} gcc-${GCC_VERSION} gcc-${GCC_VERSION}.tar.gz
 
 # ---- RUN 2: ONLY alternatives + checks (default = GCC 8.5) ----
 RUN set -eux && \
@@ -186,11 +188,11 @@ RUN echo "root:1" | chpasswd
 RUN set -eux; \
     echo "Installing tcsh from astron.com (no SSL)..."; \
     cd /tmp; \
-    echo "Downloading tcsh 6.24.16..."; \
-    wget -O tcsh-6.24.16.tar.gz http://astron.com/pub/tcsh/tcsh-6.24.16.tar.gz; \
+    echo "Downloading tcsh ${TCSH_VERSION}..."; \
+    wget -O tcsh-${TCSH_VERSION}.tar.gz http://astron.com/pub/tcsh/tcsh-${TCSH_VERSION}.tar.gz; \
     echo "Extracting tcsh..."; \
-    tar xzf tcsh-6.24.16.tar.gz; \
-    cd tcsh-6.24.16; \
+    tar xzf tcsh-${TCSH_VERSION}.tar.gz; \
+    cd tcsh-${TCSH_VERSION}; \
     echo "Configuring tcsh..."; \
     ./configure --prefix=/usr; \
     echo "Building tcsh..."; \
@@ -201,7 +203,7 @@ RUN set -eux; \
     ln -sf /usr/bin/tcsh /bin/csh; \
     echo "Cleaning..."; \
     cd /tmp; \
-    rm -rf tcsh-6.24.16 tcsh-6.24.16.tar.gz; \
+    rm -rf tcsh-${TCSH_VERSION} tcsh-${TCSH_VERSION}.tar.gz; \
     echo "tcsh installed successfully."
     
 
