@@ -9,4 +9,4 @@ docker build --progress plain -f Dockerfile_UBI93 --progress plain -t devopsteam
 docker push devopsteamelt/dev_image:v1.0.0
 ~~~
 
-## tag version is 1.0.0 
+## tag version is v1.0.0
